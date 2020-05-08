@@ -1,2 +1,7 @@
 /*.pdf
 /ML
+/__pycache__
+/.ipynb_checkpoints
+/*.doc
+/*.ppt
+
