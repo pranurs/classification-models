@@ -1,214 +1,211 @@
-import numpy as np
-import utils
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from tqdm import tqdm, tqdm_notebook
+import csv
+import numpy as np
+import matplotlib.pyplot as plt
+from preprocess import preprocess_for_gradient_descent, preprocess_for_naive_bayes
+from neural_network_model import Layer, NeuralNetwork
+from logistic_regression import LogisticRegression
+from naive_bayes import NaiveBayes
+from fisher_lda import LDA
 
-class Layer:
+def k_cross_validation (X, T, K, binary = 0):
 
-        def __init__ (self, n_nodes, activation, use_bias = True):
+        # K-fold cross-validation
 
-                self._n_nodes = n_nodes
-                self._activation = activation
-                self._use_bias = use_bias
+        fold_len = len(X)//5
+        X_folds = []
+        T_folds = []
+        k = 0
+        results = []
+        mean_test_accuracy = 0
+        mean_f_score = 0
+        stddev_test_accuracy = 0
+        stddev_f_score = 0
 
-class NeuralNetwork:
+        for i in range(K):
+                X_folds.append(X[k:k+fold_len])
+                T_folds.append(T[k:k+fold_len])
+                k += fold_len
+                if k > len(X):
+                        k = len(X)
 
-        def __init__ (self, learning_rate = 0.0005, n_layers = None, n_layer_nodes = None, layer_activations = None, weights = None, bias_weights = None):
+        for i in range(K):
 
-                # Model parameters 
-                self._alpha = learning_rate
+                X_test = X_folds[i]
+                T_test = T_folds[i]
+                X_train = []
+                T_train = []
 
-                if n_layers is not None:
-                        self._n_layers = n_layers
-                else:
-                        self._n_layers = 0
-
-                if n_layer_nodes is not None:
-                        self._n_layer_nodes = n_layer_nodes
-                else:
-                        self._n_layer_nodes = []
-
-                if layer_activations is not None:
-                        self._layer_activations = layer_activations
-                else:
-                        self._layer_activations = []
-
-                if weights is not None:
-                        self._weights = weights
-                else:
-                        self._weights = []
-
-                if bias_weights is not None:
-                        self._bias_weights = bias_weights
-                else:
-                        self._bias_weights = []
-
-                # For internal computation
-                self._use_bias = True
-
-                # For performance measurement
-                self.test_accuracy = 0
-                self.train_accuracy = 0
-                self.errors = []
-
-        def add (self, layer):
-
-                if self._n_layers is 0:
-                        self._layer_activations.append (layer._activation)
-                        self._n_layer_nodes.append(layer._n_nodes)
-                        self._n_layers += 1
-                        self._use_bias = layer._use_bias
-                        return
-
-                self._layer_activations.append (layer._activation)
-                self._weights.append (np.random.randn(layer._n_nodes, self._n_layer_nodes[-1]))
-                self._n_layer_nodes.append(layer._n_nodes)
-
-                if self._use_bias:
-                        self._bias_weights.append(np.random.randn(layer._n_nodes, 1))
-                else:
-                        self._bias_weights.append(None)
-
-                self._n_layers += 1
-
-        def _forward_propogation (self, input_vector, labels):
-
-                layers = []
-
-                layer = np.reshape(input_vector, (input_vector.shape[0], -1))
-                layers.append(layer)
-
-                for i in range (self._n_layers):
-
-                        if i is 0:
+                for j in range(K):
+                        if j == i:
                                 continue
+                        X_train = X_train + X_folds[j]
+                        T_train = T_train + T_folds[j]
 
-                        layer = np.matmul (self._weights[i - 1], utils.activate(self._layer_activations[i - 1], layer))
+                model = NaiveBayes (alpha = 1)
+                prior, likelihood, classes, vocabulary = model.fit (X_train, T_train, binary)
+                model_prediction = model.predict (X_test, prior, likelihood, classes, vocabulary)
+                test_accuracy, f_score = model.evaluate (model_prediction, T_test)
+                results.append((test_accuracy, f_score))
+                mean_test_accuracy += test_accuracy
+                mean_f_score += f_score
+                # print("TRAINING ACCURACY :", model.train_accuracy)
+                # print("Run {} : test accuracy = {}, f-score = {}".format(i,test_accuracy,f_score))
 
-                        if self._bias_weights[i - 1] is not None:
-                                layer += self._bias_weights[i - 1]
+        mean_test_accuracy /= K
+        mean_f_score /= K
 
-                        layers.append(layer)
+        for i in range(len(results)):
 
-                layers[-1][layers[-1] > 15] = 15
-                layers[-1][layers[-1] < -15] = -15
+                stddev_test_accuracy += (results[i][0] - mean_test_accuracy)**2
+                stddev_f_score += (results[i][1] - mean_f_score)**2
+        
+        stddev_test_accuracy = np.sqrt(stddev_test_accuracy / len(results))
+        stddev_f_score = np.sqrt(stddev_f_score / len(results))
 
-                prediction = utils.activate(self._layer_activations[self._n_layers - 1], layer)
-                error = np.sum (-(labels * np.log(prediction) +  (1 - labels) * np.log(1 - prediction)), axis = 1)
-                self.errors.append(error)
-                # print(error)
+        return results, mean_test_accuracy, mean_f_score, stddev_test_accuracy, stddev_f_score
 
-                self.train_accuracy = np.sum(((prediction>=0.5) - labels)**2, axis = 1)
-                self.train_accuracy = 1 - self.train_accuracy / prediction.shape[1]
+def plot_loss (costs, title):
 
-                return layers, prediction
-
-        def _back_propogation (self, layers, prediction, labels):
-
-                delta = prediction - labels
-
-                for i in reversed(range(self._n_layers)):
-
-                        if i is 0:
-                                break
-
-                        dW = np.matmul(delta, utils.activate(self._layer_activations[i - 1], layers[i - 1]).T)
-
-                        dB = np.sum (delta, axis = 1)
-                        dB = np.reshape (dB, (dB.shape[0], -1))
-
-                        delta = utils.calc_der(self._layer_activations[i - 1], layers[i - 1]) * (np.matmul(self._weights[i - 1].T, delta))
-
-                        self._weights[i - 1] -= self._alpha * dW
-
-                        if self._bias_weights[i - 1] is not None:
-                                self._bias_weights[i - 1] -= self._alpha * dB
-                
-        def _adjust_weights (self, input_vector, labels):
-
-                layers, prediction = self._forward_propogation (input_vector, labels)
-                self._back_propogation (layers, prediction, labels)
-
-        def fit (self, features, labels, epochs = 40, method = 'BGD'):
-
-                if method == 'BGD':
-
-                        for epoch in tqdm(range(epochs)):
-
-                                self._adjust_weights (features, labels)
-                                # print("\nEPOCH {}\n".format(epoch))
-                                # print(self.train_accuracy)
-
-                else:
-
-                        for epoch in tqdm(range(epochs)):
-
-                                epoch_accuracy = 0
-
-                                for i in range(features.shape[1]):
-                                        self._adjust_weights (features[:,i], labels[:,i])
-                                        epoch_accuracy += self.train_accuracy
-
-                                epoch_accuracy = epoch_accuracy/features.shape[1]
-                                # print("\nEPOCH {}\n".format(epoch))
-                                # print(epoch_accuracy)
-                                self.train_accuracy = epoch_accuracy
-
-
-        def predict (self, input_vector, labels):
-
-                layer = np.reshape(input_vector, (input_vector.shape[0], -1))
-
-                for i in range (self._n_layers):
-
-                        if i is 0:
-                                continue
-
-                        layer = np.matmul (self._weights[i - 1], utils.activate(self._layer_activations[i - 1], layer))
-
-                        if self._bias_weights[i - 1] is not None:
-                                layer += self._bias_weights[i - 1]
-
-                layer[layer > 15] = 15
-                layer[layer < -15] = -15
-
-                prediction = utils.activate(self._layer_activations[self._n_layers - 1], layer)
-
-                self.test_accuracy = np.sum(((prediction>=0.5) - labels)**2, axis = 1)
-                self.test_accuracy = 1 - self.test_accuracy / prediction.shape[1]
-
-                return prediction >= 0.5
+        fig = plt.figure(figsize = (8,8))
+        plt.plot(costs)
+        plt.xticks(np.arange(0, len(costs), step = (len(costs)//20)), rotation = 45)
+        plt.xlabel('Epoch')
+        plt.ylabel('Cost')
+        plt.title('Loss over epochs')
+        plt.savefig('loss_plots/loss_' + title)
+        plt.close(fig)
 
 
 if __name__ == "__main__":
 
-        np.random.seed (42)
 
-        data = pd.read_csv('housepricedata_NN.csv', header = None)
-        X = data.iloc[1:,:-1].astype(int)
-        Y = data.iloc[1:,-1].astype(int)
-        X = np.array(X)
-        Y = np.array(Y)
-        Y = np.reshape(Y, (Y.shape[0],1))
+        ########################################      NEURAL NETWORK      ####################################
 
-        X_min = np.min(X, axis = 0)
-        X_max = np.max(X, axis = 0)
-        X = (X - X_min)/(X_max - X_min)
-
-        X_train, X_test, Y_train, Y_test = train_test_split (X, Y, test_size = 0.2, random_state = 42)
-        X_train = X_train.T
-        X_test = X_test.T
-        Y_train = Y_train.T
-        Y_test = Y_test.T
-
-        model = NeuralNetwork()
-        model.add (Layer (X_train.shape[0], 'relu'))
-        model.add (Layer (20, 'relu'))
-        model.add (Layer (12, 'relu'))
-        model.add (Layer (1, 'sigmoid'))
+        data = pd.read_csv('datasets/housepricedata.csv', header = None)
+        X_train, X_test, X_val, Y_train, Y_test, Y_val = preprocess_for_gradient_descent (data.iloc[1:,:], 'colwise', 'standardization')
+        print(X_train.shape, X_val.shape, X_test.shape, Y_train.shape, Y_val.shape, Y_test.shape)
         
-        model.fit(X_train, Y_train, 40, 'SGD')
-        model.predict(X_test, Y_test)
-        print(model.train_accuracy)
-        print (model.test_accuracy)
+        # '''
+        model = NeuralNetwork(learning_rate=0.0005, initialization = 'gaussian', scaling = 'standard')
+        model.add (Layer (X_train.shape[0], 'relu'))
+        model.add (Layer (4, 'relu', True, 1))
+        model.add (Layer (4, 'relu', True, 0.8))
+        model.add (Layer (4, 'relu', True, 1))
+        model.add (Layer (4, 'relu', True, 1))
+        model.add (Layer (4, 'relu', True, 1))
+
+
+
+        # model.add (Layer (4, 'relu', True, 0.8))
+        # model.add (Layer (4, 'relu', True, 1))
+        # model.add (Layer (4, 'relu', True, 1))
+        # model.add (Layer (4, 'relu', True, 1))
+
+
+
+        # model.add (Layer (8, 'relu', True, 1))
+        # model.add (Layer (8, 'relu', True, 1))
+        # model.add (Layer (8, 'relu', True, 0.8))
+
+
+
+
+
+        # model.add (Layer (12, 'leaky_relu'))
+        model.add (Layer (1, 'sigmoid'))
+        # '''
+
+        # data = pd.read_csv('datasets/data_banknote_authentication.txt', header = None)
+        # X_train, X_test, X_val, Y_train, Y_test, Y_val = preprocess_for_gradient_descent (data, 'colwise', 'min-max')
+
+        # print("\n\nNEURAL NETWORK:\n")
+        # model = NeuralNetwork(learning_rate=1.5)
+        # model.add (Layer (X_train.shape[0], 'identity'))
+        # model.add (Layer (1, 'sigmoid'))
+
+        # '''
+        # # train > test:
+        # model = NeuralNetwork(0.00005, 'gaussian', 'kaiming')
+        # model.add (Layer (X_train.shape[0], 'relu'))
+        # model.add (Layer (8, 'relu'))
+        # model.add (Layer (8, 'relu'))
+        # model.add (Layer (8, 'relu'))
+        # model.add (Layer (8, 'relu'))
+        # model.add (Layer (1, 'sigmoid'))
+        # '''
+        
+
+        model.fit (X_train, Y_train, 5000, 'BGD')
+        output_val = model.predict(X_val)
+        output_test = model.predict (X_test)
+        val_accuracy, val_f_score = model.evaluate (output_val, Y_val)
+        test_accuracy, test_f_score = model.evaluate (output_test, Y_test)
+
+        print("Train accuracy: ", model.train_accuracy)
+        print ("Val accuracy: ", val_accuracy)
+        print ("Test accuracy: ", test_accuracy)
+
+        print("\nVal F1-Score: ", val_f_score)
+        print("Test F1-Score: ", test_f_score)
+        plot_loss (model.costs, 'NN_test')
+        # print(model._weights)
+        # print(model._bias_weights)
+        # # print(model.costs)
+        
+        ####################################    LOGISTIC REGRESSION   #####################################
+        
+        # print("\n\nLOGISTIC:\n");
+
+        # data = pd.read_csv('datasets/data_banknote_authentication.txt', header = None)
+        # X_train, X_test, X_val, Y_train, Y_test, Y_val = preprocess_for_gradient_descent (data, 'rowwise', 'min-max', (0.7,0.15,0.15))
+
+        # print(X_train.shape, X_val.shape, X_test.shape, Y_train.shape, Y_val.shape, Y_test.shape)
+        # # model = LogisticRegression(2, regularisation='None', lambda_reg=1)
+        # model = LogisticRegression (learning_rate=0.005, initialisation='gaussian', regularisation='L1', lambda_reg=0.5)
+        # model.fit (X_train, Y_train, 5000, 'BGD')
+        # output_val = model.predict(X_val)
+        # output_test = model.predict (X_test)
+        # val_accuracy, val_f_score = model.evaluate (output_val, Y_val)
+        # test_accuracy, test_f_score = model.evaluate (output_test, Y_test)
+
+        # print("Train accuracy: ", model.train_accuracy)
+        # print ("Val accuracy: ", val_accuracy)
+        # print ("Test accuracy: ", test_accuracy)
+
+        # print("\nVal F1-Score: ", val_f_score)
+        # print("Test F1-Score: ", test_f_score)
+        # print(model._weights)
+        # # print("\n\n", model.costs)
+        # plot_loss (model.costs, 'logistic_10000_epochs')
+
+        #####################################      NAIVE BAYES      #########################################
+        
+        # with open('datasets/a1_d3.txt') as file:
+        #         data = list(csv.reader(file, delimiter = '\t'))
+
+        # reviews, labels = preprocess_for_naive_bayes (data)
+
+        # results, mean_test_accuracy, mean_f_score, stddev_test_accuracy, stddev_f_score = k_cross_validation (reviews, labels, K = 5, binary = 1)
+        
+        # # print(results)
+        # print("TEST ACCURACY : {} +/- {}".format(mean_test_accuracy, stddev_test_accuracy))
+        # print("F1-SCORE : {} +/- {}".format(mean_f_score, stddev_f_score))
+
+        #####################################      FISHER'S LDA     #########################################
+
+        # data = pd.read_csv("datasets/a1_d2.csv", header = None)
+        # X = data.iloc[:,:-1]
+        # T = data.iloc[:,-1]
+        # X = np.asarray(X)
+        # X = X.reshape ((X.shape[0], -1))
+        # T = np.asarray(T)
+        # X = X.T # columns are individual training examples, rows are the features
+        # T = T.T # rank one column vector
+
+        # model = LDA()
+        # model.fit(X, T)
+        # model_prediction = model.predict (X)
+        # test_accuracy, f_score = model.evaluate (model_prediction, T)
+        # print("\nACCURACY : {}\nF1-SCORE : {}".format(test_accuracy, f_score))
+        # model.visualize (X, T, '2')
