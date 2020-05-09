@@ -5,8 +5,8 @@
 /*.doc
 /*.ppt
 main.py
-course_material/
-loss_plots/
-lda_plots/
-roughwork/
+/course_material
+/loss_plots
+/lda_plots
+/roughwork
 
