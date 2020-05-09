@@ -1,9 +1,5 @@
 import numpy as np
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 import scipy.stats as stats
-sns.set()
 
 def solve (mu1, mu2, sigma1, sigma2):
         '''
@@ -40,7 +36,8 @@ class LDA:
         fit (X, T) : Updates the instance variables _w, _discriminant_point, _orientation_after_collapse for the passed data examples and labels
         predict (X) : Returns a vector containing the predicted class label for each data example using the instance variables
         evaluate (model_prediction, labels) : Returns the test accuracy and f1-score of the final prediction made by the model instance.
-        visualize (X, T) : Renders plots to visualize the final results after projecting data points, using the instance variables of the model.
+        get_w () : Returns the the direction of projection computed
+        get_discriminant_point () : Returns the discriminant point computed
         '''
 
         def __init__ (self, w = None, discriminant_point = None, orientation_after_collapse = None):
@@ -174,119 +171,10 @@ class LDA:
 
                 return test_accuracy, f_score
 
-        def visualize (self, X, T, title = '1'):
-                '''
-                Renders plots to visualize the final results after projecting data points, using the instance variables of the model.
-                        1. Histogram and normal distribution plotted above the projected points, intersection shown
-                        2. Points plotted after projection, in original feature space
-                        3. Direction of projection and discriminant line plotted in original feature space
-                
-                Plots rendered are saved in ./lda_plots/
+        def get_w (self):
 
-                Optional Parameters:
-                title : suffix in title used to save plot, defaults to "1"
+                return self._w
 
-                Necessary Parameters:
-                X : An array of data examples, wherein each column is an individual data instance (feature vector)
-                T : A rank one column vector containing labels
-                '''
+        def get_discriminant_point (self):
 
-                pos_class = X[:, np.where(T==1)[0]]
-                neg_class = X[:, np.where(T==0)[0]]
-
-                proj_pos_class = self._w.T.dot(pos_class)
-                proj_neg_class = self._w.T.dot(neg_class)
-                proj_mean_pos = np.mean(proj_pos_class)
-                proj_mean_neg = np.mean(proj_neg_class)
-                proj_stddev_pos = np.std(proj_pos_class)
-                proj_stddev_neg = np.std(proj_neg_class)
-
-                # Plot a histogram and normal distribution above the projected points, and show their intersection
-                
-                fig = plt.figure(figsize = (8,8))
-                x1 = np.linspace(min(proj_pos_class[0]),max(proj_pos_class[0]),1000)
-                x2 = np.linspace(min(proj_neg_class[0]),max(proj_neg_class[0]),1000)
-
-                plt.hist(proj_pos_class[0],color='r',density=True)
-                plt.hist(proj_neg_class[0],color='b',density=True)
-                plt.plot(x1,stats.norm.pdf(x1, proj_mean_pos, proj_stddev_pos),color='green')
-                plt.plot(x2,stats.norm.pdf(x2, proj_mean_neg, proj_stddev_neg),color='orange')
-
-                intersection_point = solve (proj_mean_pos, proj_mean_neg, proj_stddev_pos, proj_stddev_neg)
-                intersection_point = [x for x in intersection_point if (x > min(proj_mean_neg,proj_mean_pos)) and (x < max(proj_mean_neg,proj_mean_pos))]
-                plt.plot(intersection_point, stats.norm.pdf(intersection_point, proj_mean_neg, proj_stddev_neg), 's', color='black', mfc='yellow')
-                plt.ylabel('Number of points')
-                plt.xlabel('Projected values along 1D')
-                plt.title('Normal Distribution for Projected Points : Dataset ' + title)
-                plt.savefig('lda_plots/normal_dist_plot_dataset_' + title)
-                plt.close(fig)
-
-                # Plot the points after projection
-
-                fig = plt.figure(figsize = (8,8))
-                ax = plt.axes()
-
-                # Slope of line along which they are projected, in original feature space = w[1]/w[0] (if feature space > 3D, this projects it to a 2D plane)
-                # projected class values = distance along the line of projection from the origin (say) = dist
-                # Hence, slope = tan(theta) = w[1]/w[0] and as w[0]^2 + w[1]^2 = 1, cos(theta) = w[0] and sin(theta) = w[1]
-                # x coordinate in original feature space = dist*cos(theta)
-                # y coordinate in original feature space = dist*sin(theta)
-
-                ax.scatter(proj_neg_class * self._w[0], proj_neg_class * self._w[1], color = 'b')
-                ax.scatter(proj_pos_class * self._w[0], proj_pos_class * self._w[1], color = 'r')
-                plt.plot(intersection_point * self._w[0], intersection_point * self._w[1], 's', color='black', mfc='yellow')
-                plt.xlabel('Feature 1')
-                plt.ylabel('Feature 2')
-
-                # To visualize the projected points in the feature 2 - feature 3 plane for a 3D dataset (Dataset 2)
-                # if self._w.shape[0] == 3:
-                #         ax.scatter(proj_neg_class * self._w[1], proj_neg_class * self._w[2], color = 'b')
-                #         ax.scatter(proj_pos_class * self._w[1], proj_pos_class * self._w[2], color = 'r')
-                #         plt.plot(intersection_point * self._w[1], intersection_point * self._w[2], 's', color='black', mfc='yellow')
-                #         plt.xlabel('Feature 2')
-                #         plt.ylabel('Feature 3')
-                        
-                plt.title('Projected Points : Dataset ' + title)
-                plt.savefig('lda_plots/projected_points_dataset_' + title)
-
-                plt.close (fig)
-
-                # Visualize the normal line to the direction of projection, and the direction of projection, on the original dataset
-
-                fig = plt.figure(figsize = (8,8))
-                ax = plt.axes()
-
-                x1 = np.linspace (-4,4,1000)
-
-                if self._w.shape[0] == 2:
-                        
-                        # Normal to the line along which points are projected, passing through the discriminant point, in y = mx + b form
-                        x2 = -(self._w[0]/self._w[1])*x1  + intersection_point * self._w[1] 
-                        # Actual line along which points are projected
-                        x3 = (self._w[1]/self._w[0])*(x1)
-
-                        ax.scatter(pos_class[0],pos_class[1],color='r')
-                        ax.scatter(neg_class[0],neg_class[1],color='b')
-                        plt.plot(intersection_point * self._w[0], intersection_point * self._w[1], 's', color='black', mfc='yellow')
-
-                        plt.xlabel('Feature 1')
-                        plt.ylabel('Feature 2')
-
-                # Dataset 2 has three features, so we project to plane of feature 2 and feature 3 in order to visualize
-                if self._w.shape[0] == 3:
-                        
-                        x2 = -(self._w[1]/self._w[2])*x1  + intersection_point * self._w[2] 
-                        x3 = (self._w[2]/self._w[1])*(x1)
-                        ax.scatter(pos_class[1],pos_class[2],color='r')
-                        ax.scatter(neg_class[1],neg_class[2],color='b')
-                        plt.plot(intersection_point * self._w[1], intersection_point * self._w[2], 's', color='black', mfc='yellow')
-                        plt.xlabel('Feature 2')
-                        plt.ylabel('Feature 3')
-
-                ax.plot(x1, x2, color='black', linestyle = 'dashed', linewidth=2.0)
-                ax.plot(x1, x3, color='black', linewidth=2.0)
-                plt.ylim(-4,4)
-                
-                plt.title('Discriminant Line in Original Feature Space : Dataset ' + title)
-                plt.savefig('lda_plots/discriminant_line_dataset_' + title)
-                plt.close(fig)
+                return self._discriminant_point

@@ -15,7 +15,7 @@ def plot_loss (costs, title):
         plt.xlabel('Epoch')
         plt.ylabel('Cost')
         plt.title('Loss over epochs')
-        plt.savefig('loss_' + title)
+        plt.savefig('loss_plots/loss_' + title)
         plt.close(fig)
 
 
@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
         ########################################      NEURAL NETWORK      ####################################
 
-        data = pd.read_csv('housepricedata.csv', header = None)
+        data = pd.read_csv('data/housepricedata.csv', header = None)
         X_train, X_test, X_val, Y_train, Y_test, Y_val = preprocess_for_gradient_descent (data.iloc[1:,:], 'colwise', 'standardization')
         print(X_train.shape, X_val.shape, X_test.shape, Y_train.shape, Y_val.shape, Y_test.shape)
         

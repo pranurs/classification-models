@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
         #####################################      NAIVE BAYES      #########################################
         
-        with open('a1_d3.txt') as file:
+        with open('data/a1_d3.txt') as file:
                 data = list(csv.reader(file, delimiter = '\t'))
 
         reviews, labels = preprocess_for_naive_bayes (data)

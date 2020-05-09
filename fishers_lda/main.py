@@ -1,7 +1,6 @@
 import pandas as pd
-import csv
 import numpy as np
-import matplotlib.pyplot as plt
+from visualize import visualize
 from fisher_lda import LDA
 
 if __name__ == "__main__":
@@ -10,7 +9,7 @@ if __name__ == "__main__":
         
         #####################################      FISHER'S LDA     #########################################
 
-        data = pd.read_csv("a1_d1.csv", header = None)
+        data = pd.read_csv("data/a1_d2.csv", header = None)
         X = data.iloc[:,:-1]
         T = data.iloc[:,-1]
         X = np.asarray(X)
@@ -24,4 +23,7 @@ if __name__ == "__main__":
         model_prediction = model.predict (X)
         test_accuracy, f_score = model.evaluate (model_prediction, T)
         print("\nACCURACY : {}\nF1-SCORE : {}".format(test_accuracy, f_score))
-        model.visualize (X, T, '1')
+        
+        w = model.get_w()
+        discriminant_point = model.get_discriminant_point()
+        visualize (X, T, w, discriminant_point, '2')
