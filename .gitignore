@@ -4,7 +4,7 @@
 /.ipynb_checkpoints
 /*.doc
 /*.ppt
-main.py
+/main.py
 /course_material
 /loss_plots
 /lda_plots
