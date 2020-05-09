@@ -4,37 +4,17 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 sns.set()
 
-def visualize (X, T, w, discriminant_point, title = '1'):
-        '''
-        Renders plots to visualize the final results after projecting data points, using the instance variables of the model.
-                1. Histogram and normal distribution plotted above the projected points, intersection shown
-                2. Points plotted after projection, in original feature space
-                3. Direction of projection and discriminant line plotted in original feature space
-        
-        Plots rendered are saved in ./lda_plots/
-
-        Optional Parameters:
-        title : suffix in title used to save plot, defaults to "1"
-
-        Necessary Parameters:
-        X : An array of data examples, wherein each column is an individual data instance (feature vector)
-        T : A rank one column vector containing labels
-        w : The direction of projection computed by the model
-        discriminant_point : The discriminating point found by the model
+def plot_normal_dist (proj_pos_class, proj_neg_class, discriminant_point, title = "1"):
 
         '''
-        pos_class = X[:, np.where(T==1)[0]]
-        neg_class = X[:, np.where(T==0)[0]]
+        Plots a histogram and normal distribution above the projected points, and shows their intersection
+        '''
 
-        proj_pos_class = w.T.dot(pos_class)
-        proj_neg_class = w.T.dot(neg_class)
         proj_mean_pos = np.mean(proj_pos_class)
         proj_mean_neg = np.mean(proj_neg_class)
         proj_stddev_pos = np.std(proj_pos_class)
         proj_stddev_neg = np.std(proj_neg_class)
 
-        # Plot a histogram and normal distribution above the projected points, and show their intersection
-        
         fig = plt.figure(figsize = (8,8))
         x1 = np.linspace(min(proj_pos_class[0]),max(proj_pos_class[0]),1000)
         x2 = np.linspace(min(proj_neg_class[0]),max(proj_neg_class[0]),1000)
@@ -52,7 +32,11 @@ def visualize (X, T, w, discriminant_point, title = '1'):
         plt.savefig('lda_plots/normal_dist_plot_dataset_' + title)
         plt.close(fig)
 
-        # Plot the points after projection
+def plot_projected_points (proj_pos_class, proj_neg_class, w, discriminant_point, title):
+
+        '''
+        Plots points after projection, in original feature space.
+        '''
 
         fig = plt.figure(figsize = (8,8))
         ax = plt.axes()
@@ -82,7 +66,11 @@ def visualize (X, T, w, discriminant_point, title = '1'):
         plt.savefig('lda_plots/projected_points_dataset_' + title)
         plt.close (fig)
 
-        # Visualize the normal line to the direction of projection, and the direction of projection, on the original dataset
+def plot_discriminant_line (pos_class, neg_class, w, discriminant_point, title):
+
+        '''
+        Renders the discriminant line and the direction of projection, in the original feature space
+        '''
 
         fig = plt.figure(figsize = (8,8))
         ax = plt.axes()
@@ -121,3 +109,39 @@ def visualize (X, T, w, discriminant_point, title = '1'):
         plt.title('Discriminant Line in Original Feature Space : Dataset ' + title)
         plt.savefig('lda_plots/discriminant_line_dataset_' + title)
         plt.close(fig)
+
+def visualize (X, T, w, discriminant_point, title = '1'):
+
+        '''
+        Renders plots to visualize the final results after projecting data points, using the instance variables of the model.
+                1. Histogram and normal distribution plotted above the projected points, intersection shown
+                2. Points plotted after projection, in original feature space
+                3. Direction of projection and discriminant line plotted in original feature space
+        
+        Plots rendered are saved in lda_plots/
+
+        Optional Parameters:
+        title : suffix in title used to save plot, defaults to "1"
+
+        Necessary Parameters:
+        X : An array of data examples, wherein each column is an individual data instance (feature vector)
+        T : A rank one column vector containing labels
+        w : The direction of projection computed by the model
+        discriminant_point : The discriminant point found by the model
+        '''
+
+        pos_class = X[:, np.where(T==1)[0]]
+        neg_class = X[:, np.where(T==0)[0]]
+
+        proj_pos_class = w.T.dot(pos_class)
+        proj_neg_class = w.T.dot(neg_class)
+        
+        plot_normal_dist (proj_pos_class, proj_neg_class, discriminant_point, title)
+
+        plot_projected_points (proj_pos_class, proj_neg_class, w, discriminant_point, title)
+
+        plot_discriminant_line (pos_class, neg_class, w, discriminant_point, title)
+
+        
+
+        

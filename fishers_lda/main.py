@@ -1,15 +1,13 @@
 import pandas as pd
 import numpy as np
-from visualize import visualize
+import visualize
 from fisher_lda import LDA
 
 if __name__ == "__main__":
 
-
-        
         #####################################      FISHER'S LDA     #########################################
 
-        data = pd.read_csv("data/a1_d2.csv", header = None)
+        data = pd.read_csv("data/a1_d1.csv", header = None)
         X = data.iloc[:,:-1]
         T = data.iloc[:,-1]
         X = np.asarray(X)
@@ -26,4 +24,4 @@ if __name__ == "__main__":
         
         w = model.get_w()
         discriminant_point = model.get_discriminant_point()
-        visualize (X, T, w, discriminant_point, '2')
+        visualize.visualize (X, T, w, discriminant_point, '1')
