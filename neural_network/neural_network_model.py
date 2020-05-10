@@ -208,8 +208,8 @@ class NeuralNetwork:
                                 # print(self.train_accuracy)
                         self.costs = costs
 
-                else:
-
+                else:   
+                        #SGD
                         for epoch in tqdm(range(epochs)):
 
                                 epoch_accuracy = 0
@@ -258,3 +258,11 @@ class NeuralNetwork:
                 prediction = utils.activate(self._layer_activations[self._n_layers - 1], layer) 
 
                 return prediction >= 0.5
+
+        def get_weights (self):
+                
+                return self._weights
+
+        def get_bias (self):
+
+                return self._bias_weights

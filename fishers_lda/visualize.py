@@ -141,7 +141,3 @@ def visualize (X, T, w, discriminant_point, title = '1'):
         plot_projected_points (proj_pos_class, proj_neg_class, w, discriminant_point, title)
 
         plot_discriminant_line (pos_class, neg_class, w, discriminant_point, title)
-
-        
-
-        
