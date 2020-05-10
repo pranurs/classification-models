@@ -58,9 +58,9 @@ The following visualization was performed on the training data for each dataset
 
 |Dataset 1 (2D)|Dataset 2 (3D)|
 |:---:|:--:|
-|<img src = "lda_plots/normal_dist_plot_dataset_train_1">|<img src = "lda_plots/normal_dist_plot_dataset_train_2">|
-|<img src = "lda_plots/projected_points_dataset_train_1">|<img src = "lda_plots/projected_points_dataset_train_2">|
-|<img src = "lda_plots/discriminant_line_dataset_train_1">|<img src = "lda_plots/discriminant_line_dataset_train_2">|
+|<img src = "lda_plots/normal_dist_plot_dataset_train_1.png">|<img src = "lda_plots/normal_dist_plot_dataset_train_2.png">|
+|<img src = "lda_plots/projected_points_dataset_train_1.png">|<img src = "lda_plots/projected_points_dataset_train_2.png">|
+|<img src = "lda_plots/discriminant_line_dataset_train_1.png">|<img src = "lda_plots/discriminant_line_dataset_train_2.png">|
 
 ---
 
